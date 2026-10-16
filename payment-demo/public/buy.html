@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mua khóa SAT 1600</title>
+<style>
+  body { margin: 0; font: 15px/1.6 system-ui, "Segoe UI", sans-serif; background: #f4f5f7; color: #1a2130; }
+  main { max-width: 440px; margin: 40px auto; padding: 0 16px; }
+  .card { background: #fff; border: 1px solid #dadfe7; border-radius: 10px; padding: 22px; display: grid; gap: 14px; }
+  h1 { margin: 0; font-size: 22px; }
+  .price { font-size: 26px; font-weight: 700; }
+  button { border: 0; border-radius: 999px; padding: 11px 18px; font: inherit; font-weight: 600; background: #232b3a; color: #fff; cursor: pointer; }
+  button:disabled { opacity: 0.5; cursor: wait; }
+  #qr { width: 100%; max-width: 300px; justify-self: center; border-radius: 8px; }
+  .code { font-family: ui-monospace, Consolas, monospace; font-size: 18px; background: #fdf1c7; padding: 2px 8px; border-radius: 4px; }
+  .muted { color: #737c8f; font-size: 13.5px; }
+  .ok { color: #1c7f4e; font-weight: 600; }
+  .bad { color: #b93a33; font-weight: 600; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1>Khóa SAT 1600</h1>
+    <p class="muted">Truy cập trọn đời toàn bộ bài giảng và đề luyện.</p>
+    <div class="price">499.000đ</div>
+    <button id="buy">Thanh toán bằng mã QR</button>
+
+    <div id="pay" hidden>
+      <img id="qr" alt="Mã QR thanh toán">
+      <p>Mở app ngân hàng và quét mã. Nội dung chuyển khoản: <span class="code" id="code"></span>
+        (giữ nguyên, không sửa).</p>
+      <p id="msg">Đang chờ thanh toán… <span class="muted" id="left"></span></p>
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const USER_ID = "demo-user"; // DEMO: thực tế là người đang đăng nhập
+let poll = null;
+
+$("buy").onclick = async () => {
+  $("buy").disabled = true;
+  try {
+    const res = await fetch("/api/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ courseId: "sat-1600", userId: USER_ID })
+    });
+    if (!res.ok) throw new Error();
+    const order = await res.json();
+
+    $("qr").src = order.qrUrl;
+    $("code").textContent = order.code;
+    $("msg").innerHTML = 'Đang chờ thanh toán… <span class="muted" id="left"></span>';
+    $("pay").hidden = false;
+    $("buy").hidden = true;
+    watch(order);
+  } catch {
+    $("buy").disabled = false;
+    alert("Không tạo được đơn hàng. Thử lại sau.");
+  }
+};
+
+// Cứ 3 giây hỏi server một lần xem tiền đã về chưa
+function watch(order) {
+  clearInterval(poll);
+  poll = setInterval(async () => {
+    const secs = Math.max(0, Math.round((order.expiresAt - Date.now()) / 1000));
+    const left = $("left");
+    if (left) left.textContent = `(mã còn hiệu lực ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")})`;
+
+    try {
+      const s = await (await fetch("/api/orders/" + order.code)).json();
+      if (s.status === "paid") {
+        clearInterval(poll);
+        $("msg").innerHTML = '<span class="ok">Thanh toán thành công! Đang mở khóa học…</span>';
+        setTimeout(() => (location.href = "/course.html"), 1500);
+      } else if (s.status === "expired") {
+        clearInterval(poll);
+        $("msg").innerHTML = '<span class="bad">Mã đã hết hạn.</span> Nếu bạn đã chuyển tiền, khóa học vẫn được mở khi tiền về.';
+        $("buy").hidden = false;
+        $("buy").disabled = false;
+        $("buy").textContent = "Tạo mã mới";
+      }
+    } catch { /* mạng chập chờn: thử lại ở lượt sau */ }
+  }, 3000);
+}
+</script>
+</body>
+</html>

@@ -25,4 +25,6 @@ Mở `index.html` bằng trình duyệt. Tiến độ được lưu trong trình
 | `app-practice.js` | Luyện tập, Ôn câu sai |
 | `app-test.js` | Thi thử, Từ vựng |
 
+Thư mục [`payment-demo/`](payment-demo/) là bản demo riêng: bán khóa học, thanh toán bằng mã VietQR, tự xác nhận qua webhook SePay. Xem hướng dẫn trong đó.
+
 Câu hỏi được tự biên soạn theo định dạng Digital SAT, không phải đề chính thức của College Board. Điểm ước tính chỉ để tham khảo.
